@@ -1,0 +1,831 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>台词翻译表编辑器</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Kaisei+Opti:wght@400;700&family=Noto+Sans+SC:wght@300;400;500&display=swap');
+
+:root {
+  --bg: #f5f0e8;
+  --surface: #fefcf7;
+  --surface2: #f0ebe0;
+  --border: #d4c9b0;
+  --border2: #c0b49a;
+  --accent: #8b5e3c;
+  --accent2: #c0392b;
+  --accent3: #2c6e49;
+  --text: #2a2018;
+  --muted: #8a7a65;
+  --radius: 6px;
+  --shadow: 0 2px 8px rgba(100,70,30,0.08);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  background-image:
+    radial-gradient(circle at 20% 50%, rgba(139,94,60,0.04) 0%, transparent 50%),
+    radial-gradient(circle at 80% 20%, rgba(44,110,73,0.04) 0%, transparent 40%);
+  color: var(--text);
+  font-family: 'Noto Sans SC', sans-serif;
+  font-weight: 300;
+  min-height: 100vh;
+  padding: 28px 20px 60px;
+}
+
+header {
+  max-width: 1100px;
+  margin: 0 auto 28px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  border-bottom: 2px solid var(--border2);
+  padding-bottom: 14px;
+}
+
+.header-left h1 {
+  font-family: 'Kaisei Opti', serif;
+  font-weight: 700;
+  font-size: 24px;
+  color: var(--accent);
+  letter-spacing: 1px;
+}
+
+.header-left p {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 3px;
+  letter-spacing: 0.5px;
+}
+
+.main { max-width: 1100px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
+
+/* Top config bar */
+.config-bar {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 18px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  box-shadow: var(--shadow);
+}
+
+.config-bar label {
+  font-size: 11px;
+  color: var(--muted);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.config-bar input {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+  font-family: 'Noto Sans SC', sans-serif;
+  font-size: 14px;
+  padding: 6px 10px;
+  width: 100px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+.config-bar input:focus { border-color: var(--accent); }
+
+.config-bar .sep { width: 1px; height: 28px; background: var(--border); }
+
+.btn {
+  padding: 7px 16px;
+  border: none;
+  border-radius: 4px;
+  font-family: 'Noto Sans SC', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+  letter-spacing: 0.5px;
+}
+.btn-ghost {
+  background: transparent;
+  border: 1px solid var(--border2);
+  color: var(--muted);
+}
+.btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+.btn-accent {
+  background: var(--accent);
+  color: #fff;
+}
+.btn-accent:hover { background: #7a5235; }
+.btn-green {
+  background: var(--accent3);
+  color: #fff;
+}
+.btn-green:hover { background: #235c3c; }
+.btn-danger {
+  background: transparent;
+  border: 1px solid #e0b0aa;
+  color: var(--accent2);
+  padding: 5px 10px;
+  font-size: 11px;
+}
+.btn-danger:hover { background: var(--accent2); color: #fff; }
+
+/* Entry card */
+.entry-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+  transition: box-shadow 0.2s;
+}
+.entry-card:hover { box-shadow: 0 4px 16px rgba(100,70,30,0.12); }
+
+.entry-card.missing-both { border-left: 3px solid var(--border2); opacity: 0.7; }
+.entry-card.missing-jp { border-left: 3px solid #e6a817; }
+.entry-card.missing-zh { border-left: 3px solid #e6a817; }
+.entry-card.complete { border-left: 3px solid var(--accent3); }
+
+.card-header {
+  display: flex;
+  align-items: center;
+  padding: 10px 14px;
+  background: var(--surface2);
+  border-bottom: 1px solid var(--border);
+  gap: 10px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.card-header:hover { background: #ece6d8; }
+
+.scene-tag {
+  font-family: 'Kaisei Opti', serif;
+  font-size: 12px;
+  color: var(--accent);
+  background: rgba(139,94,60,0.1);
+  border: 1px solid rgba(139,94,60,0.2);
+  border-radius: 3px;
+  padding: 2px 8px;
+  white-space: nowrap;
+}
+
+.scene-name {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text);
+}
+
+.filename-tag {
+  font-size: 11px;
+  color: var(--muted);
+  font-family: monospace;
+  margin-left: auto;
+}
+
+.status-dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.dot-complete { background: var(--accent3); }
+.dot-partial { background: #e6a817; }
+.dot-empty { background: var(--border2); }
+
+.collapse-icon {
+  font-size: 10px;
+  color: var(--muted);
+  transition: transform 0.2s;
+  margin-left: 4px;
+}
+.collapsed .collapse-icon { transform: rotate(-90deg); }
+
+.card-body {
+  padding: 14px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.card-body.collapsed-body { display: none; }
+
+.field-label {
+  font-size: 10px;
+  color: var(--muted);
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  margin-bottom: 5px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.field-lang {
+  font-size: 10px;
+  padding: 1px 5px;
+  border-radius: 2px;
+  font-weight: 500;
+}
+.lang-jp { background: rgba(192,57,43,0.1); color: var(--accent2); }
+.lang-zh { background: rgba(44,110,73,0.1); color: var(--accent3); }
+
+textarea {
+  width: 100%;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+  font-family: 'Noto Sans SC', sans-serif;
+  font-size: 13px;
+  line-height: 1.7;
+  padding: 8px 10px;
+  resize: vertical;
+  min-height: 72px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+textarea:focus { border-color: var(--accent); }
+textarea::placeholder { color: #b0a898; }
+
+.card-footer {
+  padding: 8px 14px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.omit-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--muted);
+  cursor: pointer;
+  user-select: none;
+}
+.omit-toggle input[type=checkbox] { accent-color: var(--accent); }
+
+/* Add custom scene */
+.add-custom {
+  background: var(--surface);
+  border: 1px dashed var(--border2);
+  border-radius: var(--radius);
+  padding: 14px 18px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.add-custom input {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+  font-family: 'Noto Sans SC', sans-serif;
+  font-size: 13px;
+  padding: 6px 10px;
+  outline: none;
+  transition: border-color 0.2s;
+  width: 160px;
+}
+.add-custom input:focus { border-color: var(--accent); }
+
+/* Output */
+.output-area {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+
+.output-header {
+  display: flex;
+  align-items: center;
+  padding: 12px 16px;
+  background: var(--surface2);
+  border-bottom: 1px solid var(--border);
+  gap: 10px;
+}
+
+.output-header h3 {
+  font-family: 'Kaisei Opti', serif;
+  font-size: 14px;
+  color: var(--accent);
+  flex: 1;
+}
+
+.output-code {
+  padding: 16px;
+  font-family: 'Courier New', monospace;
+  font-size: 12.5px;
+  line-height: 1.9;
+  white-space: pre;
+  overflow-x: auto;
+  color: var(--text);
+  background: #faf7f0;
+  min-height: 80px;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.copy-hint {
+  font-size: 11px;
+  color: var(--accent3);
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+/* filter bar */
+.filter-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.filter-btn {
+  font-size: 11px;
+  padding: 4px 10px;
+  border-radius: 3px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.filter-btn.active, .filter-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: rgba(139,94,60,0.07);
+}
+
+.stats {
+  font-size: 11px;
+  color: var(--muted);
+  margin-left: auto;
+}
+
+.group-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 4px;
+  border-bottom: 1px solid var(--border2);
+  margin-bottom: 10px;
+}
+.group-title {
+  font-family: 'Kaisei Opti', serif;
+  font-size: 14px;
+  color: var(--accent);
+  font-weight: 700;
+}
+.group-count {
+  font-size: 11px;
+  color: var(--muted);
+  margin-right: auto;
+}
+
+@media (max-width: 700px) {
+  .card-body { grid-template-columns: 1fr; }
+  .config-bar { flex-wrap: wrap; }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <h1>台詞翻訳表 · 编辑器</h1>
+    <p>Wiki 台词翻译表模板生成工具</p>
+  </div>
+</header>
+
+<div class="main">
+
+  <!-- Config bar -->
+  <div class="config-bar">
+    <label>角色 ID</label>
+    <input type="text" id="charId" placeholder="" value="" oninput="onCharIdChange()" />
+    <div class="sep"></div>
+    <div class="filter-bar">
+      <button class="filter-btn active" onclick="setFilter('all', this)">全部</button>
+      <button class="filter-btn" onclick="setFilter('complete', this)">已完成</button>
+      <button class="filter-btn" onclick="setFilter('partial', this)">部分缺失</button>
+      <button class="filter-btn" onclick="setFilter('empty', this)">全部缺失</button>
+    </div>
+    <span class="stats" id="stats"></span>
+    <div class="sep"></div>
+    <button class="btn btn-green" onclick="generateOutput()">生成 Wiki 代码</button>
+    <button class="btn btn-ghost" style="border-color:#e0b0aa;color:var(--accent2);" onclick="showClearConfirm()">清空内容</button>
+  </div>
+
+  <!-- Confirm modal -->
+  <div id="clearModal" style="display:none;position:fixed;inset:0;background:rgba(20,15,10,0.55);z-index:999;align-items:center;justify-content:center;">
+    <div style="background:var(--surface);border:1px solid var(--border2);border-radius:8px;padding:28px 28px 22px;max-width:340px;width:90%;box-shadow:0 8px 32px rgba(0,0,0,0.2);">
+      <div style="font-family:'Kaisei Opti',serif;font-size:16px;color:var(--accent2);margin-bottom:10px;">确认清空？</div>
+      <div style="font-size:13px;color:var(--muted);line-height:1.7;margin-bottom:20px;">将清除所有台词文本及省略标记，角色 ID 保留。此操作无法撤销。</div>
+      <div style="display:flex;gap:10px;justify-content:flex-end;">
+        <button class="btn btn-ghost" onclick="hideClearConfirm()">取消</button>
+        <button class="btn" style="background:var(--accent2);color:#fff;" onclick="clearAll()">确认清空</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Entry list: 常规场合 -->
+  <div class="group-header">
+    <span class="group-title">常规台词</span>
+    <span class="group-count" id="groupCountMain"></span>
+    <button class="btn btn-ghost" style="font-size:11px;padding:4px 10px;" onclick="batchOmit('main', true)">全部省略</button>
+    <button class="btn btn-ghost" style="font-size:11px;padding:4px 10px;" onclick="batchOmit('main', false)">取消省略</button>
+  </div>
+  <div id="entryListMain"></div>
+
+  <!-- Entry list: 时报 -->
+  <div class="group-header" style="margin-top:8px;">
+    <span class="group-title">时报</span>
+    <span class="group-count" id="groupCountHour"></span>
+    <button class="btn btn-ghost" style="font-size:11px;padding:4px 10px;" onclick="batchOmit('hour', true)">全部省略</button>
+    <button class="btn btn-ghost" style="font-size:11px;padding:4px 10px;" onclick="batchOmit('hour', false)">取消省略</button>
+  </div>
+  <div id="entryListHour"></div>
+
+  <!-- Add custom scene -->
+  <div class="add-custom">
+    <span style="font-size:12px;color:var(--muted);white-space:nowrap;">添加自定义场合</span>
+    <input type="text" id="customSuffix" placeholder="档名后缀，如 Xmas2024" />
+    <input type="text" id="customLabel" placeholder="场合名称，如 圣诞节" />
+    <button class="btn btn-ghost" onclick="addCustomScene()">＋ 添加</button>
+  </div>
+
+  <!-- Output -->
+  <div class="output-area" id="outputArea" style="display:none;">
+    <div class="output-header">
+      <h3>生成结果</h3>
+      <span class="copy-hint" id="copyHint">已复制！</span>
+      <button class="btn btn-accent" onclick="copyOutput()">复制全部</button>
+    </div>
+    <div class="output-code" id="outputCode"></div>
+  </div>
+
+</div>
+
+<script>
+// ── 场合定义 ──────────────────────────────────────────────
+const kanji = ['〇','一','二','三','四','五','六','七','八','九'];
+function toKanji(n) {
+  // Format: 0000 → 〇〇〇〇, 0100 → 〇一〇〇, 1600 → 一六〇〇
+  const s = String(n).padStart(4, '0');
+  return s.split('').map(d => kanji[parseInt(d)]).join('');
+}
+
+// Generate all 24 hourly scenes
+const hourlyScenes = [];
+for (let h = 0; h < 24; h++) {
+  const suffix = String(h * 100).padStart(4, '0');
+  const label = toKanji(h * 100) + '时报';
+  hourlyScenes.push({ suffix, label });
+}
+
+const BASE_SCENES = [
+  { suffix: 'Intro',         label: '入手/登入时' },
+  { suffix: 'Sec1',          label: '秘书舰1' },
+  { suffix: 'Sec2',          label: '秘书舰2' },
+  { suffix: 'Sec3',          label: '秘书舰3' },
+  { suffix: 'ConstComplete', label: '建造完成' },
+  { suffix: 'Return',        label: '归来' },
+  { suffix: 'Achievement',   label: '战绩' },
+  { suffix: 'Equip1',        label: '装备/改修/改造1' },
+  { suffix: 'Equip2',        label: '装备/改修/改造2' },
+  { suffix: 'DockLightDmg',  label: '小破入渠' },
+  { suffix: 'DockMedDmg',    label: '中破入渠' },
+  { suffix: 'FleetOrg',      label: '编成' },
+  { suffix: 'Sortie',        label: '出征' },
+  { suffix: 'Battle',        label: '战斗开始' },
+  { suffix: 'Atk1',          label: '攻击1' },
+  { suffix: 'Atk2',          label: '攻击2' },
+  { suffix: 'NightBattle',   label: '夜战' },
+  { suffix: 'LightDmg1',     label: '小破1' },
+  { suffix: 'LightDmg2',     label: '小破2' },
+  { suffix: 'MedDmg',        label: '中破' },
+  { suffix: 'Sunk',          label: '击沉' },
+  { suffix: 'MVP',           label: 'MVP' },
+  { suffix: 'Proposal',      label: '结婚' },
+  { suffix: 'LibIntro',      label: '图鉴介绍' },
+  { suffix: 'Equip3',        label: '装备' },
+  { suffix: 'Resupply',      label: '补给' },
+  { suffix: 'SecWed',        label: '秘书舰（婚后）' },
+  { suffix: 'Idle',          label: '放置' },
+  ...hourlyScenes,
+];
+
+// ── State ─────────────────────────────────────────────────
+let scenes = BASE_SCENES.map(s => ({
+  ...s,
+  jp: '',
+  zh: '',
+  omit: false,   // 标记为"此条不存在，整体省略"
+  collapsed: true,
+}));
+
+let currentFilter = 'all';
+let charId = '';
+
+// ── LocalStorage ──────────────────────────────────────────
+const LS_KEY = 'wiki_editor_state';
+
+function saveState() {
+  const data = {
+    charId,
+    scenes: scenes.map(s => ({ suffix: s.suffix, jp: s.jp, zh: s.zh, omit: s.omit, collapsed: s.collapsed }))
+  };
+  localStorage.setItem(LS_KEY, JSON.stringify(data));
+}
+
+function loadState() {
+  try {
+    const raw = localStorage.getItem(LS_KEY);
+    if (!raw) return;
+    const data = JSON.parse(raw);
+    if (data.charId) {
+      charId = data.charId;
+      document.getElementById('charId').value = charId;
+    }
+    if (data.scenes) {
+      data.scenes.forEach(saved => {
+        const found = scenes.find(s => s.suffix === saved.suffix);
+        if (found) {
+          found.jp = saved.jp || '';
+          found.zh = saved.zh || '';
+          found.omit = saved.omit || false;
+          found.collapsed = saved.collapsed || false;
+        } else {
+          // custom scene
+          scenes.push({ suffix: saved.suffix, label: saved.suffix, jp: saved.jp || '', zh: saved.zh || '', omit: saved.omit || false, collapsed: saved.collapsed ?? true, custom: true });
+        }
+      });
+    }
+  } catch(e) {}
+}
+
+// ── Helpers ───────────────────────────────────────────────
+function getStatus(scene) {
+  if (scene.omit) return 'omit';
+  const hasJp = scene.jp.trim() !== '';
+  const hasZh = scene.zh.trim() !== '';
+  if (hasJp && hasZh) return 'complete';
+  if (hasJp || hasZh) return 'partial';
+  return 'empty';
+}
+
+function getCardClass(scene) {
+  const s = getStatus(scene);
+  if (s === 'omit') return 'missing-both';
+  if (s === 'complete') return 'complete';
+  if (s === 'partial') return 'missing-jp';
+  return '';
+}
+
+function getDotClass(scene) {
+  const s = getStatus(scene);
+  if (s === 'complete') return 'dot-complete';
+  if (s === 'partial') return 'dot-partial';
+  return 'dot-empty';
+}
+
+function filename(scene) {
+  return charId ? `${charId}-${scene.suffix}` : `???-${scene.suffix}`;
+}
+
+function updateStats() {
+  const total = scenes.filter(s => !s.omit).length;
+  const done = scenes.filter(s => getStatus(s) === 'complete').length;
+  document.getElementById('stats').textContent = `${done} / ${total} 已完成`;
+}
+
+// ── Render ────────────────────────────────────────────────
+// 判断是否时报场合
+function isHourly(scene) {
+  return /^\d{4}$/.test(scene.suffix);
+}
+
+function renderGroup(sceneList, containerId) {
+  const container = document.getElementById(containerId);
+  container.innerHTML = '';
+
+  const filtered = sceneList.filter(s => {
+    if (currentFilter === 'all') return true;
+    const st = getStatus(s);
+    if (currentFilter === 'complete') return st === 'complete';
+    if (currentFilter === 'partial') return st === 'partial';
+    if (currentFilter === 'empty') return st === 'empty' || st === 'omit';
+    return true;
+  });
+
+  filtered.forEach(scene => {
+    const idx = scenes.indexOf(scene);
+    const card = document.createElement('div');
+    card.className = `entry-card ${getCardClass(scene)}`;
+    card.id = `card-${idx}`;
+    card.style.marginBottom = '10px';
+
+    const isCollapsed = scene.collapsed;
+    const statusDot = `<div class="status-dot ${getDotClass(scene)}"></div>`;
+
+    card.innerHTML = `
+      <div class="card-header ${isCollapsed ? 'collapsed' : ''}" onclick="toggleCollapse(${idx})">
+        ${statusDot}
+        <span class="scene-tag">${scene.suffix}</span>
+        <span class="scene-name">${scene.label}${scene.custom ? ' <span style="font-size:10px;color:var(--muted);">[自定义]</span>' : ''}</span>
+        <span class="filename-tag">${filename(scene)}</span>
+        <span class="collapse-icon">▼</span>
+      </div>
+      <div class="card-body ${isCollapsed ? 'collapsed-body' : ''}">
+        <div>
+          <div class="field-label"><span class="field-lang lang-jp">JP</span> 日文台词</div>
+          <textarea placeholder="粘贴日文原文…" oninput="updateField(${idx},'jp',this.value)">${scene.jp}</textarea>
+        </div>
+        <div>
+          <div class="field-label"><span class="field-lang lang-zh">ZH</span> 中文译文</div>
+          <textarea placeholder="粘贴中文译文…" oninput="updateField(${idx},'zh',this.value)">${scene.zh}</textarea>
+        </div>
+      </div>
+      <div class="card-footer ${isCollapsed ? 'collapsed-body' : ''}">
+        <label class="omit-toggle">
+          <input type="checkbox" ${scene.omit ? 'checked' : ''} onchange="toggleOmit(${idx}, this.checked)" />
+          此场合不存在，整体省略
+        </label>
+        ${scene.custom ? `<button class="btn btn-danger" style="margin-left:auto;" onclick="removeCustom(${idx})">删除</button>` : ''}
+      </div>`;
+
+    container.appendChild(card);
+  });
+
+  return filtered.length;
+}
+
+function renderAll() {
+  const mainScenes = scenes.filter(s => !isHourly(s));
+  const hourScenes = scenes.filter(s => isHourly(s));
+
+  renderGroup(mainScenes, 'entryListMain');
+  renderGroup(hourScenes, 'entryListHour');
+
+  // Update group counts
+  const mainDone = mainScenes.filter(s => getStatus(s) === 'complete').length;
+  const hourDone = hourScenes.filter(s => getStatus(s) === 'complete').length;
+  const mainOmit = mainScenes.filter(s => s.omit).length;
+  const hourOmit = hourScenes.filter(s => s.omit).length;
+  document.getElementById('groupCountMain').textContent =
+    `${mainDone}/${mainScenes.length} 已完成` + (mainOmit ? `，${mainOmit} 项省略` : '');
+  document.getElementById('groupCountHour').textContent =
+    `${hourDone}/${hourScenes.length} 已完成` + (hourOmit ? `，${hourOmit} 项省略` : '');
+
+  updateStats();
+}
+
+function batchOmit(group, val) {
+  scenes.forEach(s => {
+    if (group === 'hour' && isHourly(s)) s.omit = val;
+    if (group === 'main' && !isHourly(s) && !s.custom) s.omit = val;
+  });
+  saveState();
+  renderAll();
+}
+
+function toggleCollapse(idx) {
+  scenes[idx].collapsed = !scenes[idx].collapsed;
+  saveState();
+  renderAll();
+}
+
+function updateField(idx, field, val) {
+  scenes[idx][field] = val;
+  saveState();
+  // Update card class & dot without full re-render
+  const card = document.getElementById(`card-${idx}`);
+  if (card) {
+    card.className = `entry-card ${getCardClass(scenes[idx])}`;
+    const dot = card.querySelector('.status-dot');
+    if (dot) dot.className = `status-dot ${getDotClass(scenes[idx])}`;
+  }
+  updateStats();
+}
+
+function toggleOmit(idx, val) {
+  scenes[idx].omit = val;
+  saveState();
+  renderAll();
+}
+
+function removeCustom(idx) {
+  scenes.splice(idx, 1);
+  saveState();
+  renderAll();
+}
+
+// ── Filter ────────────────────────────────────────────────
+function setFilter(f, btn) {
+  currentFilter = f;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderAll();
+}
+
+// ── Char ID ───────────────────────────────────────────────
+function onCharIdChange() {
+  charId = document.getElementById('charId').value.trim();
+  saveState();
+  document.querySelectorAll('.filename-tag').forEach(el => {
+    const card = el.closest('.entry-card');
+    if (!card) return;
+    const idMatch = card.id.match(/card-(\d+)/);
+    if (idMatch) el.textContent = filename(scenes[parseInt(idMatch[1])]);
+  });
+}
+
+// ── Add custom ────────────────────────────────────────────
+function addCustomScene() {
+  const suffix = document.getElementById('customSuffix').value.trim();
+  const label = document.getElementById('customLabel').value.trim();
+  if (!suffix || !label) { alert('请填写档名后缀和场合名称'); return; }
+  if (scenes.find(s => s.suffix === suffix)) { alert('该档名后缀已存在'); return; }
+  scenes.push({ suffix, label, jp: '', zh: '', omit: false, collapsed: false, custom: true });
+  document.getElementById('customSuffix').value = '';
+  document.getElementById('customLabel').value = '';
+  saveState();
+  renderAll();
+}
+
+// ── Generate output ───────────────────────────────────────
+function generateOutput() {
+  if (!charId) { alert('请先填写角色 ID'); return; }
+
+  const toRender = scenes.filter(s => !s.omit && (s.jp.trim() || s.zh.trim()));
+
+  if (toRender.length === 0) {
+    alert('没有可生成的内容，请至少填写一条台词。');
+    return;
+  }
+
+  let lines = ['{{台词翻译表/页头}}'];
+  toRender.forEach(s => {
+    lines.push('{{台词翻译表');
+    lines.push(` | 档名 = ${filename(s)}`);
+    lines.push(` | 场合 = ${s.label}`);
+    lines.push(` | 日文台词 = ${s.jp.trim()}`);
+    lines.push(` | 中文译文 = ${s.zh.trim()}`);
+    lines.push('}}');
+  });
+  lines.push('{{页尾}}');
+
+  const output = lines.join('\n');
+  document.getElementById('outputCode').textContent = output;
+  document.getElementById('outputArea').style.display = 'block';
+  document.getElementById('outputArea').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function copyOutput() {
+  const text = document.getElementById('outputCode').textContent;
+  navigator.clipboard.writeText(text).then(() => {
+    const hint = document.getElementById('copyHint');
+    hint.style.opacity = '1';
+    setTimeout(() => hint.style.opacity = '0', 2000);
+  });
+}
+
+function showClearConfirm() {
+  const modal = document.getElementById('clearModal');
+  modal.style.display = 'flex';
+}
+
+function hideClearConfirm() {
+  document.getElementById('clearModal').style.display = 'none';
+}
+
+function clearAll() {
+  scenes.forEach(s => {
+    s.jp = '';
+    s.zh = '';
+    s.omit = false;
+    s.collapsed = true;
+    if (s.custom) s._toRemove = true;
+  });
+  // Remove custom scenes
+  for (let i = scenes.length - 1; i >= 0; i--) {
+    if (scenes[i]._toRemove) scenes.splice(i, 1);
+  }
+  saveState();
+  hideClearConfirm();
+  renderAll();
+}
+
+// ── Init ──────────────────────────────────────────────────
+loadState();
+renderAll();
+</script>
+</body>
+</html>

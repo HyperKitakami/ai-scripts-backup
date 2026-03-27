@@ -1,0 +1,801 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>音声検証 · Whisper Verifier</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;800&family=Noto+Sans+JP:wght@300;400;500&display=swap');
+
+  :root {
+    --bg: #0e0e11;
+    --surface: #16161c;
+    --surface2: #1e1e28;
+    --border: #2a2a38;
+    --accent: #7c6af7;
+    --accent2: #e06c75;
+    --accent3: #61d4b3;
+    --text: #e8e8f0;
+    --muted: #6e6e88;
+    --radius: 10px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Noto Sans JP', sans-serif;
+    font-weight: 300;
+    min-height: 100vh;
+    padding: 32px 24px;
+  }
+
+  header {
+    display: flex;
+    align-items: baseline;
+    gap: 16px;
+    margin-bottom: 36px;
+  }
+
+  header h1 {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: 22px;
+    letter-spacing: -0.5px;
+    color: var(--text);
+  }
+
+  header span {
+    font-size: 12px;
+    color: var(--muted);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+
+  .layout {
+    display: grid;
+    grid-template-columns: 340px 1fr;
+    gap: 20px;
+    max-width: 1200px;
+  }
+
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+  }
+
+  .panel-title {
+    font-family: 'Syne', sans-serif;
+    font-weight: 600;
+    font-size: 11px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .panel-title::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  label {
+    display: block;
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+
+  input[type="text"], input[type="password"], textarea, select {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    font-family: 'Noto Sans JP', sans-serif;
+    font-size: 13px;
+    padding: 9px 12px;
+    outline: none;
+    transition: border-color 0.2s;
+    margin-bottom: 14px;
+  }
+
+  input[type="text"]:focus, input[type="password"]:focus,
+  textarea:focus, select:focus {
+    border-color: var(--accent);
+  }
+
+  textarea { resize: vertical; min-height: 80px; line-height: 1.6; }
+
+  select option { background: var(--surface2); }
+
+  .tag-input-wrapper {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 8px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 14px;
+    min-height: 44px;
+    cursor: text;
+    transition: border-color 0.2s;
+  }
+
+  .tag-input-wrapper:focus-within { border-color: var(--accent); }
+
+  .tag {
+    background: rgba(124,106,247,0.15);
+    border: 1px solid rgba(124,106,247,0.3);
+    color: var(--accent);
+    border-radius: 4px;
+    padding: 2px 8px;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-family: 'Noto Sans JP', sans-serif;
+  }
+
+  .tag-remove {
+    cursor: pointer;
+    color: var(--muted);
+    font-size: 14px;
+    line-height: 1;
+  }
+  .tag-remove:hover { color: var(--accent2); }
+
+  .tag-input {
+    border: none;
+    background: transparent;
+    color: var(--text);
+    font-family: 'Noto Sans JP', sans-serif;
+    font-size: 13px;
+    outline: none;
+    flex: 1;
+    min-width: 80px;
+    padding: 2px 4px;
+  }
+
+  .audio-drop {
+    border: 2px dashed var(--border);
+    border-radius: 8px;
+    padding: 24px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-bottom: 14px;
+    position: relative;
+  }
+
+  .audio-drop:hover, .audio-drop.drag-over {
+    border-color: var(--accent);
+    background: rgba(124,106,247,0.05);
+  }
+
+  .audio-drop input[type="file"] {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    border: none;
+    background: transparent;
+  }
+
+  .audio-drop-icon { font-size: 24px; margin-bottom: 6px; }
+  .audio-drop-text { font-size: 12px; color: var(--muted); }
+  .audio-drop-name { font-size: 13px; color: var(--accent3); margin-top: 6px; }
+
+  audio {
+    width: 100%;
+    margin-bottom: 14px;
+    border-radius: 6px;
+  }
+
+  button.btn {
+    width: 100%;
+    padding: 12px;
+    border: none;
+    border-radius: 8px;
+    font-family: 'Syne', sans-serif;
+    font-weight: 600;
+    font-size: 13px;
+    letter-spacing: 1px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  button.btn-primary {
+    background: var(--accent);
+    color: #fff;
+  }
+  button.btn-primary:hover:not(:disabled) {
+    background: #9585ff;
+    transform: translateY(-1px);
+  }
+  button.btn-primary:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  /* Right panel */
+  .right-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .result-area {
+    flex: 1;
+    min-height: 400px;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .result-placeholder {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: var(--muted);
+    font-size: 13px;
+    gap: 10px;
+  }
+
+  .result-placeholder .icon { font-size: 36px; opacity: 0.3; }
+
+  /* Result cards */
+  .result-word-card {
+    background: var(--surface2);
+    border-radius: 8px;
+    padding: 16px 18px;
+    margin-bottom: 12px;
+    border-left: 3px solid var(--accent);
+  }
+
+  .word-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+
+  .word-original {
+    font-family: 'Syne', sans-serif;
+    font-weight: 600;
+    font-size: 16px;
+    color: var(--accent);
+  }
+
+  .word-arrow { color: var(--muted); font-size: 14px; }
+
+  .candidates {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 10px;
+  }
+
+  .candidate {
+    background: rgba(97,212,179,0.1);
+    border: 1px solid rgba(97,212,179,0.25);
+    color: var(--accent3);
+    border-radius: 5px;
+    padding: 3px 10px;
+    font-size: 13px;
+  }
+
+  .candidate.best {
+    background: rgba(97,212,179,0.2);
+    border-color: var(--accent3);
+    font-weight: 500;
+  }
+
+  .reasoning {
+    font-size: 13px;
+    color: #aaa;
+    line-height: 1.7;
+    border-top: 1px solid var(--border);
+    padding-top: 10px;
+    margin-top: 4px;
+  }
+
+  /* Loading */
+  .loading-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    padding: 60px 0;
+    color: var(--muted);
+    font-size: 13px;
+  }
+
+  .spinner {
+    width: 32px;
+    height: 32px;
+    border: 2px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Summary box */
+  .summary-box {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px 18px;
+    font-size: 13px;
+    line-height: 1.8;
+    white-space: pre-wrap;
+  }
+
+  .error-box {
+    background: rgba(224,108,117,0.08);
+    border: 1px solid rgba(224,108,117,0.25);
+    border-radius: 8px;
+    padding: 14px 18px;
+    font-size: 13px;
+    color: var(--accent2);
+    line-height: 1.7;
+  }
+
+  .config-toggle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: var(--muted);
+    cursor: pointer;
+    user-select: none;
+    margin-bottom: 14px;
+  }
+  .config-toggle:hover { color: var(--text); }
+
+  .badge {
+    display: inline-block;
+    font-size: 10px;
+    padding: 1px 6px;
+    border-radius: 3px;
+    background: rgba(124,106,247,0.15);
+    color: var(--accent);
+    letter-spacing: 0.5px;
+    margin-left: 4px;
+    vertical-align: middle;
+  }
+
+  @media (max-width: 800px) {
+    .layout { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>音声検証</h1>
+  <span>Whisper Verifier</span>
+</header>
+
+<div class="layout">
+
+  <!-- LEFT: Config + Input -->
+  <div style="display:flex;flex-direction:column;gap:20px;">
+
+    <!-- API Config -->
+    <div class="panel">
+      <div class="panel-title">API 配置</div>
+
+      <label>API Key</label>
+      <input type="password" id="apiKey" placeholder="sk-ant-..." />
+
+      <label>API 提供商</label>
+      <select id="providerSelect" onchange="onProviderChange()">
+        <option value="anthropic">Anthropic (Claude)</option>
+        <option value="openai">OpenAI (GPT-4o 等)</option>
+        <option value="google">Google (Gemini)</option>
+        <option value="custom">自定义 Endpoint</option>
+      </select>
+
+      <div id="customEndpointWrap" style="display:none;">
+        <label>自定义 API Endpoint</label>
+        <input type="text" id="customEndpoint" placeholder="https://your-api.com/v1/messages" />
+      </div>
+
+      <label>模型名称 <span class="badge">手动填写</span></label>
+      <input type="text" id="modelInput" placeholder="例：gemini-2.0-flash, gpt-4o, claude-sonnet-4-5…" />
+
+      <div id="modelHints" style="font-size:11px;color:var(--muted);margin-top:-10px;margin-bottom:14px;line-height:1.8;"></div>
+    </div>
+
+    <!-- Input -->
+    <div class="panel">
+      <div class="panel-title">输入信息</div>
+
+      <label>音频片段</label>
+      <div class="audio-drop" id="audioDrop">
+        <input type="file" id="audioFile" accept="audio/*" />
+        <div class="audio-drop-icon">🎵</div>
+        <div class="audio-drop-text">点击或拖入音频文件</div>
+        <div class="audio-drop-name" id="audioFileName"></div>
+      </div>
+      <audio id="audioPreview" controls style="display:none;"></audio>
+
+      <label>Whisper 转录结果</label>
+      <textarea id="whisperResult" placeholder="粘贴 Whisper 输出的日语文本…" style="min-height:70px;"></textarea>
+
+      <label>疑难词汇 <span class="badge">回车添加</span></label>
+      <div class="tag-input-wrapper" id="tagWrapper">
+        <input class="tag-input" id="tagInput" placeholder="输入词汇后按回车…" />
+      </div>
+
+      <label>台词背景说明（可选）</label>
+      <textarea id="context" placeholder="例：这是一段动漫对话，说话者是关西腔的中年男性，场景在餐厅…" style="min-height:60px;"></textarea>
+
+      <button class="btn btn-primary" id="analyzeBtn" onclick="analyze()">开始分析</button>
+    </div>
+  </div>
+
+  <!-- RIGHT: Result -->
+  <div class="right-panel">
+    <div class="panel result-area">
+      <div class="panel-title">分析结果</div>
+      <div id="resultContent">
+        <div class="result-placeholder">
+          <div class="icon">🎧</div>
+          <div>填写左侧信息后点击「开始分析」</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// --- Tag input ---
+const tags = [];
+const tagInput = document.getElementById('tagInput');
+const tagWrapper = document.getElementById('tagWrapper');
+
+tagWrapper.addEventListener('click', () => tagInput.focus());
+
+tagInput.addEventListener('keydown', e => {
+  if ((e.key === 'Enter' || e.key === '，' || e.key === ',') && tagInput.value.trim()) {
+    e.preventDefault();
+    addTag(tagInput.value.trim());
+    tagInput.value = '';
+  }
+  if (e.key === 'Backspace' && !tagInput.value && tags.length) {
+    removeTag(tags.length - 1);
+  }
+});
+
+function addTag(val) {
+  if (tags.includes(val)) return;
+  tags.push(val);
+  renderTags();
+}
+
+function removeTag(i) {
+  tags.splice(i, 1);
+  renderTags();
+}
+
+function renderTags() {
+  const existing = tagWrapper.querySelectorAll('.tag');
+  existing.forEach(el => el.remove());
+  tags.forEach((t, i) => {
+    const el = document.createElement('div');
+    el.className = 'tag';
+    el.innerHTML = `${t}<span class="tag-remove" onclick="removeTag(${i})">×</span>`;
+    tagWrapper.insertBefore(el, tagInput);
+  });
+}
+
+// --- Audio ---
+const audioFile = document.getElementById('audioFile');
+const audioPreview = document.getElementById('audioPreview');
+const audioFileName = document.getElementById('audioFileName');
+let audioBase64 = null;
+let audioMime = null;
+
+audioFile.addEventListener('change', e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  audioFileName.textContent = file.name;
+  audioMime = file.type || 'audio/mpeg';
+  const url = URL.createObjectURL(file);
+  audioPreview.src = url;
+  audioPreview.style.display = 'block';
+
+  const reader = new FileReader();
+  reader.onload = ev => {
+    audioBase64 = ev.target.result.split(',')[1];
+  };
+  reader.readAsDataURL(file);
+});
+
+// Drag
+const audioDrop = document.getElementById('audioDrop');
+audioDrop.addEventListener('dragover', e => { e.preventDefault(); audioDrop.classList.add('drag-over'); });
+audioDrop.addEventListener('dragleave', () => audioDrop.classList.remove('drag-over'));
+audioDrop.addEventListener('drop', e => {
+  e.preventDefault();
+  audioDrop.classList.remove('drag-over');
+  const file = e.dataTransfer.files[0];
+  if (file) {
+    audioFile.files = e.dataTransfer.files;
+    audioFile.dispatchEvent(new Event('change'));
+  }
+});
+
+// --- Provider hints ---
+const PROVIDER_HINTS = {
+  anthropic: '推荐模型：claude-opus-4-5 / claude-sonnet-4-5',
+  openai: '推荐模型：gpt-4o / gpt-4o-mini（支持音频输入）',
+  google: '推荐模型：gemini-2.0-flash / gemini-1.5-pro（原生音频支持最佳）',
+  custom: '请填写自定义 Endpoint 地址，消息格式需兼容 OpenAI 规范'
+};
+
+const PROVIDER_ENDPOINTS = {
+  anthropic: 'https://api.anthropic.com/v1/messages',
+  openai: 'https://api.openai.com/v1/chat/completions',
+  google: '', // dynamically set with model name
+};
+
+function onProviderChange() {
+  const provider = document.getElementById('providerSelect').value;
+  document.getElementById('modelHints').textContent = PROVIDER_HINTS[provider] || '';
+  document.getElementById('customEndpointWrap').style.display = provider === 'custom' ? 'block' : 'none';
+  // Suggest a default model name
+  const defaults = { anthropic: 'claude-sonnet-4-5', openai: 'gpt-4o', google: 'gemini-2.0-flash', custom: '' };
+  document.getElementById('modelInput').placeholder = defaults[provider] || '';
+}
+
+// --- LocalStorage config cache ---
+const CONFIG_KEY = 'whisper_verifier_config';
+
+function saveConfig() {
+  const config = {
+    apiKey: document.getElementById('apiKey').value,
+    provider: document.getElementById('providerSelect').value,
+    model: document.getElementById('modelInput').value,
+    customEndpoint: document.getElementById('customEndpoint').value,
+  };
+  localStorage.setItem(CONFIG_KEY, JSON.stringify(config));
+}
+
+function showSaveIndicator(msg) {
+  let el = document.getElementById('saveIndicator');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'saveIndicator';
+    el.style.cssText = 'font-size:11px;color:var(--accent3);text-align:right;margin-top:-8px;margin-bottom:10px;opacity:0;transition:opacity 0.4s;';
+    document.getElementById('modelHints').insertAdjacentElement('afterend', el);
+  }
+  el.textContent = '✓ ' + msg;
+  el.style.opacity = '1';
+  clearTimeout(el._t);
+  el._t = setTimeout(() => { el.style.opacity = '0'; }, 2000);
+}
+
+// Auto-save on any config field change
+['apiKey','providerSelect','modelInput','customEndpoint'].forEach(id => {
+  const el = document.getElementById(id);
+  el.addEventListener('input', () => { saveConfig(); showSaveIndicator('配置已保存'); });
+  el.addEventListener('change', () => { saveConfig(); showSaveIndicator('配置已保存'); });
+});
+
+function loadConfig() {
+  try {
+    const raw = localStorage.getItem(CONFIG_KEY);
+    if (!raw) return;
+    const config = JSON.parse(raw);
+    if (config.apiKey) document.getElementById('apiKey').value = config.apiKey;
+    if (config.provider) document.getElementById('providerSelect').value = config.provider;
+    if (config.customEndpoint) document.getElementById('customEndpoint').value = config.customEndpoint;
+    onProviderChange(); // update hints & visibility based on provider
+    if (config.model) document.getElementById('modelInput').value = config.model; // after onProviderChange to avoid placeholder override
+    showSaveIndicator('已恢复上次配置');
+  } catch(e) {}
+}
+
+// Init hints
+onProviderChange();
+loadConfig();
+
+// --- Main analyze ---
+async function analyze() {
+  const apiKey = document.getElementById('apiKey').value.trim();
+  const provider = document.getElementById('providerSelect').value;
+  const model = document.getElementById('modelInput').value.trim();
+  const whisperText = document.getElementById('whisperResult').value.trim();
+  const context = document.getElementById('context').value.trim();
+  const resultDiv = document.getElementById('resultContent');
+
+  if (!apiKey) { alert('请填写 API Key'); return; }
+  if (!model) { alert('请填写模型名称'); return; }
+  if (!whisperText) { alert('请填写 Whisper 转录结果'); return; }
+  if (tags.length === 0) { alert('请至少添加一个疑难词汇'); return; }
+
+  document.getElementById('analyzeBtn').disabled = true;
+  resultDiv.innerHTML = `<div class="loading-state"><div class="spinner"></div><div>正在分析中，请稍候…</div></div>`;
+
+  const wordsList = tags.map(t => `「${t}」`).join('、');
+  const prompt = `你是一位专业的日语语言学家，擅长分析语音识别结果并纠正疑难词汇。
+
+## 任务
+Whisper 语音识别产生了以下转录文本，但其中部分词汇可信度较低，请帮助验证和纠正。${audioBase64 ? '\n已附上原始音频，请仔细聆听后结合上下文判断。' : ''}
+
+## Whisper 转录结果
+${whisperText}
+
+## 需要验证的疑难词汇
+${wordsList}
+
+${context ? `## 台词背景说明\n${context}` : ''}
+
+## 输出格式要求
+请以 JSON 格式输出，结构如下：
+{
+  "words": [
+    {
+      "original": "原词",
+      "candidates": ["最可能的词", "第二候选", "第三候选（如有）"],
+      "best": "最推荐的词",
+      "reasoning": "详细分析理由，包括音似分析、上下文判断、语法合理性等"
+    }
+  ],
+  "overall_suggestion": "对整句转录的整体建议或修正后的完整句子"
+}
+
+只输出 JSON，不要有其他内容。`;
+
+  try {
+    let parsed;
+    if (provider === 'anthropic') {
+      parsed = await callAnthropic(apiKey, model, prompt);
+    } else if (provider === 'openai' || provider === 'custom') {
+      const endpoint = provider === 'custom'
+        ? document.getElementById('customEndpoint').value.trim()
+        : PROVIDER_ENDPOINTS.openai;
+      parsed = await callOpenAICompat(apiKey, model, prompt, endpoint);
+    } else if (provider === 'google') {
+      parsed = await callGemini(apiKey, model, prompt);
+    }
+    renderResult(parsed);
+  } catch (e) {
+    resultDiv.innerHTML = `<div class="error-box">❌ 出错了：${e.message}<br><br>请检查 API Key、模型名称或网络连接。</div>`;
+  } finally {
+    document.getElementById('analyzeBtn').disabled = false;
+  }
+}
+
+// --- Anthropic ---
+async function callAnthropic(apiKey, model, prompt) {
+  const content = [];
+  if (audioBase64) {
+    content.push({ type: 'text', text: '以下是需要验证的日语音频片段，请仔细聆听：' });
+    content.push({ type: 'document', source: { type: 'base64', media_type: audioMime, data: audioBase64 } });
+  }
+  content.push({ type: 'text', text: prompt });
+
+  const resp = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true'
+    },
+    body: JSON.stringify({ model, max_tokens: 2000, messages: [{ role: 'user', content }] })
+  });
+  if (!resp.ok) { const e = await resp.json().catch(()=>{}); throw new Error(e?.error?.message || `HTTP ${resp.status}`); }
+  const data = await resp.json();
+  const raw = data.content.map(b => b.text || '').join('');
+  return JSON.parse(raw.replace(/```json|```/g, '').trim());
+}
+
+// --- OpenAI compatible ---
+async function callOpenAICompat(apiKey, model, prompt, endpoint) {
+  const messages = [];
+  const userContent = [];
+
+  if (audioBase64) {
+    // OpenAI audio input format
+    userContent.push({
+      type: 'input_audio',
+      input_audio: { data: audioBase64, format: audioMime.split('/')[1] || 'mp3' }
+    });
+  }
+  userContent.push({ type: 'text', text: prompt });
+  messages.push({ role: 'user', content: userContent });
+
+  const resp = await fetch(endpoint, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+    body: JSON.stringify({ model, max_tokens: 2000, messages })
+  });
+  if (!resp.ok) { const e = await resp.json().catch(()=>{}); throw new Error(e?.error?.message || `HTTP ${resp.status}`); }
+  const data = await resp.json();
+  const raw = data.choices?.[0]?.message?.content || '';
+  return JSON.parse(raw.replace(/```json|```/g, '').trim());
+}
+
+// --- Google Gemini ---
+async function callGemini(apiKey, model, prompt) {
+  const parts = [];
+  if (audioBase64) {
+    parts.push({ inlineData: { mimeType: audioMime, data: audioBase64 } });
+  }
+  parts.push({ text: prompt });
+
+  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+  const resp = await fetch(endpoint, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      contents: [{ parts }],
+      generationConfig: { maxOutputTokens: 2000 }
+    })
+  });
+  if (!resp.ok) { const e = await resp.json().catch(()=>{}); throw new Error(e?.error?.message || `HTTP ${resp.status}`); }
+  const data = await resp.json();
+  const raw = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+  return JSON.parse(raw.replace(/```json|```/g, '').trim());
+}
+
+function renderResult(data) {
+  const resultDiv = document.getElementById('resultContent');
+  let html = '';
+
+  if (data.words && data.words.length) {
+    data.words.forEach(w => {
+      const candidatesHtml = w.candidates.map(c =>
+        `<span class="candidate ${c === w.best ? 'best' : ''}">${c === w.best ? '★ ' : ''}${c}</span>`
+      ).join('');
+      html += `
+        <div class="result-word-card">
+          <div class="word-header">
+            <span class="word-original">${w.original}</span>
+            <span class="word-arrow">→</span>
+            <span style="color:var(--accent3);font-weight:500;">${w.best}</span>
+          </div>
+          <div class="candidates">${candidatesHtml}</div>
+          <div class="reasoning">${w.reasoning}</div>
+        </div>`;
+    });
+  }
+
+  if (data.overall_suggestion) {
+    html += `
+      <div style="margin-top:8px;">
+        <div class="panel-title" style="margin-bottom:10px;">整体建议</div>
+        <div class="summary-box">${data.overall_suggestion}</div>
+      </div>`;
+  }
+
+  resultDiv.innerHTML = html || '<div class="result-placeholder"><div>未返回有效结果</div></div>';
+}
+</script>
+</body>
+</html>
