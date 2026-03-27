@@ -764,10 +764,10 @@ function addCustomScene() {
 function generateOutput() {
   if (!charId) { alert('请先填写角色 ID'); return; }
 
-  const toRender = scenes.filter(s => !s.omit && (s.jp.trim() || s.zh.trim()));
+  const toRender = scenes.filter(s => !s.omit);
 
   if (toRender.length === 0) {
-    alert('没有可生成的内容，请至少填写一条台词。');
+    alert('所有场合均已勾选省略，没有可生成的内容。');
     return;
   }
 
